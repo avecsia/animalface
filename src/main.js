@@ -97,6 +97,11 @@ function handleFileSelect(e) {
 async function analyzeFace() {
     if (!base64Image || !uploadedFile) return;
 
+    startAnalyzeBtn.disabled = true;
+    retryBtn.disabled = true;
+    startAnalyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    retryBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
     loadingOverlay.classList.remove('hidden');
     analyzeAction.classList.add('hidden');
     errorBox.classList.add('hidden');
@@ -123,11 +128,11 @@ async function analyzeFace() {
             ]
         }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { responseMimeType: "application/json", temperature: 0 }
+        generationConfig: { responseMimeType: "application/json" }
     };
 
     try {
-        const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
+        const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -141,10 +146,18 @@ async function analyzeFace() {
         }
     } catch (err) {
         console.error("Analysis failed:", err);
-        errorMessage.innerText = "An error occurred during analysis. Please try again.";
+        resultSection.classList.add('hidden');
+        if (err.isRateLimit) {
+            errorMessage.innerText = "요청 횟수가 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+        } else {
+            errorMessage.innerText = "분석 중 오류가 발생했습니다. 다시 시도해 주세요.";
+        }
         errorBox.classList.remove('hidden');
-        analyzeAction.classList.remove('hidden'); // Show original button to allow retry
     } finally {
+        startAnalyzeBtn.disabled = false;
+        retryBtn.disabled = false;
+        startAnalyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        retryBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         loadingOverlay.classList.add('hidden');
     }
 }
@@ -153,12 +166,20 @@ async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
     try {
         const response = await fetch(url, options);
         if (!response.ok) {
+            if (response.status === 429) {
+                const rateLimitError = new Error("Rate limit exceeded.");
+                rateLimitError.isRateLimit = true;
+                throw rateLimitError;
+            }
             const errorBody = await response.text();
             console.error(`API Error: ${response.status} ${response.statusText}`, errorBody);
             throw new Error(`API call failed: ${response.status}`);
         }
         return await response.json();
     } catch (err) {
+        if (err.isRateLimit) {
+            throw err;
+        }
         if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
             return fetchWithRetry(url, options, retries - 1, delay * 2);
@@ -167,15 +188,26 @@ async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
     }
 }
 
-
 function displayResult(data) {
     const type = ANIMAL_TYPES[data.animalKey];
     if (!type) {
         console.error("Invalid animalKey from API:", data.animalKey);
-        errorMessage.innerText = "Unknown animal type received.";
+        errorMessage.innerText = "알 수 없는 동물 유형입니다.";
         errorBox.classList.remove('hidden');
-        analyzeAction.classList.remove('hidden');
+        resultSection.classList.add('hidden');
         return;
+    }
+
+    // Hide the container with the preview image and initial buttons
+    const imageContainer = previewStep.firstElementChild;
+    if (imageContainer) {
+        imageContainer.classList.add('hidden');
+    }
+    
+    // The user doesn't want the "type info" box at the bottom.
+    const typeInfoBox = document.getElementById('typeInfoBox');
+    if (typeInfoBox) {
+        typeInfoBox.classList.add('hidden');
     }
 
     const resultCard = document.getElementById('resultCard');
@@ -188,9 +220,10 @@ function displayResult(data) {
     document.getElementById('resultTitle').innerHTML = `${data.matchPercentage}% <span class="text-2xl font-bold">${type.name}</span>`;
     document.getElementById('resultReason').innerText = `"${data.reason}"`;
     document.getElementById('positiveFeedback').innerText = data.positiveFeedback;
-    document.getElementById('typeDescription').innerText = type.description;
 
+    // Show the results
     resultSection.classList.remove('hidden');
+
     try {
         lucide.createIcons();
     } catch (e) {
@@ -212,11 +245,17 @@ function reset() {
     previewStep.classList.add('hidden');
     resetBtn.classList.add('hidden');
     resultSection.classList.add('hidden');
+    
+    // Show the preview image container again for the next upload
+    const imageContainer = previewStep.firstElementChild;
+    if (imageContainer) {
+        imageContainer.classList.remove('hidden');
+    }
+
     analyzeAction.classList.remove('hidden');
     errorBox.classList.add('hidden');
 }
 
-// Run the initialization logic once the DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
 } else {

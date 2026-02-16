@@ -31,6 +31,7 @@ let uploadedFile = null;
 function initialize() {
     setupEventListeners();
     renderAnimalIcons();
+    lucide.createIcons(); // Added this line
 }
 
 function setupEventListeners() {

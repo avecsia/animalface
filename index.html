@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 동물상 테스트 - 프리미엄 분석</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap');
+        body { font-family: 'Pretendard', sans-serif; scroll-behavior: smooth; }
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-900 pb-20">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <span class="text-2xl">🐶</span> AI 동물상 분석
+            </h1>
+            <button id="resetBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors hidden">
+                <i data-lucide="refresh-cw" class="w-5 h-5 text-slate-500"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 mt-8">
+        <!-- Step 1: Upload Area -->
+        <div id="uploadStep" class="space-y-8">
+            <div class="text-center space-y-3">
+                <h2 class="text-4xl font-extrabold tracking-tight text-slate-900">내 얼굴은 어떤 동물?</h2>
+                <p class="text-slate-500 text-lg">AI가 얼굴형과 이목구비를 분석하여<br>가장 닮은 동물상을 찾아드립니다.</p>
+            </div>
+
+            <div id="dropZone" class="border-3 border-dashed border-blue-200 rounded-[2.5rem] p-16 bg-white flex flex-col items-center justify-center gap-6 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all group shadow-sm">
+                <div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-500 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                    <i data-lucide="image-plus" class="w-10 h-10"></i>
+                </div>
+                <div class="text-center">
+                    <p class="font-bold text-xl mb-1">사진 선택하기</p>
+                    <p class="text-slate-400">얼굴이 정면으로 나온 사진이 좋아요</p>
+                </div>
+                <input type="file" id="fileInput" class="hidden" accept="image/*">
+            </div>
+            
+            <div class="flex justify-center gap-4 text-slate-300">
+                <span>#강아지상</span> <span>#고양이상</span> <span>#토끼상</span> <span>#공룡상</span>
+            </div>
+        </div>
+
+        <!-- Step 2: Analysis & Results -->
+        <div id="previewStep" class="hidden space-y-6">
+            <!-- Image Preview Card -->
+            <div class="bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100">
+                <div class="relative aspect-[4/5] bg-slate-200">
+                    <img id="previewImg" src="" alt="Preview" class="w-full h-full object-cover">
+                    <div id="loadingOverlay" class="absolute inset-0 bg-slate-900/60 backdrop-blur-md hidden flex flex-col items-center justify-center text-white">
+                        <div class="spinner mb-6"></div>
+                        <p class="text-xl font-bold tracking-widest animate-pulse">AI DEEP LEARNING ANALYSIS...</p>
+                        <p class="text-sm text-slate-300 mt-2">이목구비 데이터를 분석 중입니다</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Result Section -->
+            <div id="resultSection" class="hidden space-y-6 fade-in">
+                <!-- Main Badge -->
+                <div id="resultMainCard" class="p-8 rounded-[2rem] text-center space-y-4 shadow-xl border-t-8">
+                    <div id="mainAnimalEmoji" class="text-7xl mb-2">🐶</div>
+                    <h3 class="text-2xl font-bold text-slate-500" id="resultLabel">당신은 따뜻한 매력의</h3>
+                    <h2 class="text-5xl font-black text-slate-900" id="mainAnimalName">강아지상</h2>
+                    <div class="inline-block px-6 py-2 rounded-full bg-blue-600 text-white font-bold text-xl mt-2" id="mainPercent">98%</div>
+                </div>
+
+                <!-- Multi-Animal Ranking Chart -->
+                <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 space-y-6">
+                    <h4 class="font-bold text-lg flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5 text-blue-500"></i> 동물상 분포도
+                    </h4>
+                    <div id="rankingContainer" class="space-y-4">
+                        <!-- Bars injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Feature Description -->
+                <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 space-y-4">
+                    <h4 class="font-bold text-lg flex items-center gap-2">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-amber-500"></i> 나의 매력 분석
+                    </h4>
+                    <p id="animalDescription" class="text-slate-600 leading-relaxed text-lg font-medium"></p>
+                    <div id="keywords" class="flex flex-wrap gap-2 pt-2">
+                        <!-- Tags injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Similar Celebrities -->
+                <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-100 space-y-6">
+                    <h4 class="font-bold text-lg flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-purple-500"></i> 닮은 연예인
+                    </h4>
+                    <div id="celebrityList" class="grid grid-cols-2 gap-3">
+                        <!-- Celebs injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Share & Actions -->
+                <div class="grid grid-cols-2 gap-4">
+                    <button class="flex flex-col items-center justify-center p-4 bg-[#FEE500] rounded-2xl font-bold text-slate-900 gap-1 shadow-sm hover:brightness-95 transition-all">
+                        <i data-lucide="message-circle" class="w-6 h-6"></i>
+                        <span class="text-sm">카톡 공유</span>
+                    </button>
+                    <button id="retestBtn" class="flex flex-col items-center justify-center p-4 bg-slate-900 rounded-2xl font-bold text-white gap-1 shadow-lg hover:bg-slate-800 active:scale-95 transition-all">
+                        <i data-lucide="refresh-ccw" class="w-6 h-6"></i>
+                        <span class="text-sm">다시 테스트</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-20 text-center text-slate-400 text-sm">
+        <p>© 2026 AI Animal Face Identity Pro</p>
+        <p class="mt-1">인공지능 모델로 분석한 결과이며 실제와 다를 수 있습니다.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+
+        const animalData = {
+            "강아지상": {
+                emoji: "🐶",
+                color: "border-blue-500",
+                bgColor: "bg-blue-50",
+                description: "다정하고 따뜻한 느낌을 주는 인상입니다. 선한 눈망울과 부드러운 얼굴 선이 특징이며, 누구에게나 호감을 주는 '멍뭉미' 넘치는 매력을 소유하고 계시네요!",
+                keywords: ["#다정다감", "#친근함", "#첫사랑조작", "#순둥순둥"],
+                celebs: ["박보검", "송중기", "수지", "강다니엘"]
+            },
+            "고양이상": {
+                emoji: "🐱",
+                color: "border-purple-500",
+                bgColor: "bg-purple-50",
+                description: "세련되고 도도한 매력이 돋보이는 인상입니다. 날렵한 눈매와 오똑한 콧날이 특징이며, 처음에는 차가워 보일 수 있지만 알수록 치명적인 매력을 발산합니다.",
+                keywords: ["#도도함", "#시크", "#치명적", "#세련미"],
+                celebs: ["제니", "안소희", "주지훈", "강동원"]
+            },
+            "토끼상": {
+                emoji: "🐰",
+                color: "border-pink-500",
+                bgColor: "bg-pink-50",
+                description: "귀엽고 상큼한 과즙미가 넘치는 인상입니다. 동그란 눈과 올망졸망한 이목구비가 특징이며, 보고만 있어도 기분이 좋아지는 보호본능 자극형 매력의 소유자입니다.",
+                keywords: ["#깜찍", "#과즙세연", "#보호본능", "#러블리"],
+                celebs: ["나연(트와이스)", "장원영", "정국(BTS)", "정해인"]
+            },
+            "공룡상": {
+                emoji: "🦖",
+                color: "border-emerald-500",
+                bgColor: "bg-emerald-50",
+                description: "남성미와 개성이 넘치는 매력적인 인상입니다. 뚜렷한 T존과 입체적인 얼굴형이 특징이며, 강렬한 카리스마 속에 은근한 장난기가 느껴지는 마성의 소유자입니다.",
+                keywords: ["#카리스마", "#개성파", "#무신사태", "#츤데레"],
+                celebs: ["공유", "김우빈", "홍종현", "탑"]
+            },
+            "여우상": {
+                emoji: "🦊",
+                color: "border-orange-500",
+                bgColor: "bg-orange-50",
+                description: "지적이면서도 묘한 섹시함이 느껴지는 인상입니다. 가로로 긴 눈매와 날렵한 턱선이 매력적이며, 사람의 마음을 꿰뚫어 보는 듯한 영리한 분위기를 풍깁니다.",
+                keywords: ["#지적임", "#섹시미", "#영리함", "#매혹적"],
+                celebs: ["육성재", "서인국", "한소희", "현아"]
+            }
+        };
+
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const uploadStep = document.getElementById('uploadStep');
+        const previewStep = document.getElementById('previewStep');
+        const previewImg = document.getElementById('previewImg');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const resultSection = document.getElementById('resultSection');
+        const rankingContainer = document.getElementById('rankingContainer');
+        const celebrityList = document.getElementById('celebrityList');
+        const keywordsContainer = document.getElementById('keywords');
+        const resetBtn = document.getElementById('resetBtn');
+        const retestBtn = document.getElementById('retestBtn');
+
+        dropZone.onclick = () => fileInput.click();
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    previewImg.src = ev.target.result;
+                    uploadStep.classList.add('hidden');
+                    previewStep.classList.remove('hidden');
+                    resetBtn.classList.remove('hidden');
+                    runAnalysis();
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        function runAnalysis() {
+            loadingOverlay.classList.remove('hidden');
+            window.scrollTo(0, 0);
+
+            setTimeout(() => {
+                loadingOverlay.classList.add('hidden');
+                resultSection.classList.remove('hidden');
+                
+                // 가상 데이터 생성 (실제 모델 연동 시 수정)
+                const types = Object.keys(animalData);
+                const scores = types.map(() => Math.floor(Math.random() * 40) + 10);
+                scores[0] = 85 + Math.floor(Math.random() * 14); // 1등 강제 생성
+                
+                const results = types.map((t, i) => ({ name: t, score: scores[i] }))
+                                     .sort((a, b) => b.score - a.score);
+
+                renderResults(results);
+            }, 3000);
+        }
+
+        function renderResults(results) {
+            const top = results[0];
+            const data = animalData[top.name];
+
+            // 상단 카드 업데이트
+            const mainCard = document.getElementById('resultMainCard');
+            mainCard.className = `p-8 rounded-[2rem] text-center space-y-4 shadow-xl border-t-8 bg-white ${data.color}`;
+            document.getElementById('mainAnimalEmoji').innerText = data.emoji;
+            document.getElementById('mainAnimalName').innerText = top.name;
+            document.getElementById('mainPercent').innerText = `${top.score}%`;
+            document.getElementById('animalDescription').innerText = data.description;
+
+            // 랭킹 차트 렌더링
+            rankingContainer.innerHTML = '';
+            results.forEach(res => {
+                const row = document.createElement('div');
+                row.className = "space-y-1.5";
+                row.innerHTML = `
+                    <div class="flex justify-between text-sm font-bold">
+                        <span>${animalData[res.name].emoji} ${res.name}</span>
+                        <span class="text-blue-600">${res.score}%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-500 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                `;
+                rankingContainer.appendChild(row);
+                setTimeout(() => {
+                    row.querySelector('.bg-blue-500').style.width = `${res.score}%`;
+                }, 100);
+            });
+
+            // 키워드 렌더링
+            keywordsContainer.innerHTML = '';
+            data.keywords.forEach(kw => {
+                const tag = document.createElement('span');
+                tag.className = "px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold";
+                tag.innerText = kw;
+                keywordsContainer.appendChild(tag);
+            });
+
+            // 연예인 렌더링
+            celebrityList.innerHTML = '';
+            data.celebs.forEach(name => {
+                const item = document.createElement('div');
+                item.className = "bg-slate-50 p-3 rounded-xl text-center font-bold text-slate-700 border border-slate-100";
+                item.innerText = name;
+                celebrityList.appendChild(item);
+            });
+        }
+
+        retestBtn.onclick = () => location.reload();
+        resetBtn.onclick = () => location.reload();
+    </script>
+</body>
+</html>

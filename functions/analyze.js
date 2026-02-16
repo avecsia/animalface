@@ -8,9 +8,9 @@ export async function onRequest(context) {
     try {
         // Cloudflare 환경 변수(비밀)에서 API 키를 가져옵니다.
         // Cloudflare Pages 설정에서 비밀 변수의 이름이 'GEMINI_API_KEY'인지 확인해주세요.
-        const geminiApiKey = context.env.GEMINI_API_KEY;
+        const geminiApiKey = context.env.VITE_GEMINI_API_KEY;
         if (!geminiApiKey) {
-            return new Response(JSON.stringify({ error: "GEMINI_API_KEY 비밀이 Cloudflare 환경에 설정되지 않았습니다." }), {
+            return new Response(JSON.stringify({ error: "VITE_GEMINI_API_KEY 비밀이 Cloudflare 환경에 설정되지 않았습니다." }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' },
             });

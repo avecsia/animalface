@@ -198,6 +198,10 @@ function displayResult(data) {
     if (typeInfoBox) {
         typeInfoBox.classList.add('hidden');
     }
+    
+    analyzeAction.classList.add('hidden');
+    errorBox.classList.add('hidden');
+    retestBtn.classList.add('hidden');
 
     const resultCard = document.getElementById('resultCard');
     const resultBgIcon = document.getElementById('resultBgIcon');

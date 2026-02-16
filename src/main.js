@@ -1,3 +1,7 @@
+import { ANIMAL_TYPES } from './animalTypes.js';
+
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
 // DOM Elements
 const uploadStep = document.getElementById('uploadStep');
 const previewStep = document.getElementById('previewStep');
@@ -15,7 +19,6 @@ const retestBtn = document.getElementById('retestBtn');
 const rankingContainer = document.getElementById('rankingContainer');
 const celebrityList = document.getElementById('celebrityList');
 const keywordsContainer = document.getElementById('keywords');
-const kakaoShareBtn = document.getElementById('kakaoShareBtn'); // New Kakao share button
 
 // Gender Selection Elements
 const maleBtn = document.getElementById('maleBtn');
@@ -30,26 +33,91 @@ function initialize() {
     setupEventListeners();
     renderAnimalIcons();
     updateGenderSelectionUI(); // Set initial active state for gender buttons
-    initializeKakaoSDK(); // Initialize Kakao SDK
+    // Removed initializeKakaoSDK();
 }
 
-// ... (rest of the file remains the same until analyzeFace, fetchWithRetry)
+function setupEventListeners() {
+    if (dropZone) {
+        dropZone.addEventListener('click', () => fileInput.click());
+    }
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', reset);
+    }
+    if (retestBtn) {
+        retestBtn.addEventListener('click', reset);
+    }
 
-async function initializeKakaoSDK() {
+    if (maleBtn) {
+        maleBtn.addEventListener('click', () => {
+            selectedGender = "male";
+            updateGenderSelectionUI();
+        });
+    }
+    if (femaleBtn) {
+        femaleBtn.addEventListener('click', () => {
+            selectedGender = "female";
+            updateGenderSelectionUI();
+        });
+    }
+}
+
+function updateGenderSelectionUI() {
+    if (maleBtn) {
+        maleBtn.classList.toggle('active', selectedGender === 'male');
+    }
+    if (femaleBtn) {
+        femaleBtn.classList.toggle('active', selectedGender === 'female');
+    }
+    if (selectedGenderText) {
+        selectedGenderText.innerText = selectedGender === 'male' ? '남성' : '여성';
+    }
+}
+
+
+function renderAnimalIcons() {
+    const container = document.getElementById('animalTypeIcons');
+    if (!container) return;
+    container.innerHTML = ''; // Clear existing icons
+    Object.values(ANIMAL_TYPES).forEach(type => {
+        const div = document.createElement('div');
+        div.className = "bg-white border border-slate-100 p-3 rounded-xl text-center shadow-sm";
+        div.innerHTML = `<span class="text-2xl mb-1 block">${type.icon}</span><span class="text-xs font-medium text-slate-600">${type.name}</span>`;
+        container.appendChild(div);
+    });
+}
+
+function handleFileSelect(e) {
+    uploadedFile = e.target.files[0];
+    if (uploadedFile) {
+        const reader = new FileReader();
+        reader.onload = (ev) => { // Changed from onloadend to onload
+            base64Image = ev.target.result.split(',')[1];
+            previewImg.src = ev.target.result;
+            
+            uploadStep.classList.add('hidden');
+            previewStep.classList.remove('hidden');
+            resetBtn.classList.remove('hidden');
+            analyzeFace(base64Image); // Call analyzeFace immediately after file select
+        };
+        reader.readAsDataURL(uploadedFile);
+    }
+}
+
+async function fetchWithRetry(url, options, retries = 5, backoff = 1000) {
     try {
-        const response = await fetch('/api/config');
-        const config = await response.json();
-
-        if (response.ok && config.kakaoKey) {
-            if (!Kakao.isInitialized()) { // Check if not already initialized
-                Kakao.init(config.kakaoKey);
-            }
-            console.log("Kakao SDK initialized successfully.");
-        } else {
-            console.error("Failed to initialize Kakao SDK:", config.error || "Key not found in server response.");
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error('API Error');
+        return await response.json();
+    } catch (err) {
+        if (retries > 0) {
+            await new Promise(r => setTimeout(r, backoff));
+            return fetchWithRetry(url, options, retries - 1, backoff * 2);
         }
-    } catch (error) {
-        console.error("Error fetching app configuration for Kakao:", error);
+        throw err;
     }
 }
 
@@ -197,27 +265,6 @@ function displayResult(analysis) { // Now accepts the full analysis object
 
     // Show the results
     resultSection.classList.remove('hidden');
-    
-    // Kakao Share Button Click Handler
-    const kakaoShareBtn = document.getElementById('kakaoShareBtn');
-    if (kakaoShareBtn) {
-        kakaoShareBtn.onclick = () => {
-            if (!Kakao.isInitialized()) { 
-                alert("카카오 SDK가 초기화되지 않았습니다. Cloudflare 비밀값을 확인하거나 잠시 후 다시 시도해주세요."); 
-                return; 
-            }
-            Kakao.Share.sendDefault({
-                objectType: 'feed',
-                content: { 
-                    title: `AI 동물상 테스트 결과: ${topPercent}% ${topTypeKey}!`, 
-                    description: analysis.summary, 
-                    imageUrl: previewImg.src, 
-                    link: { mobileWebUrl: window.location.href, webUrl: window.location.href } 
-                },
-                buttons: [{ title: '나도 테스트하기', link: { mobileWebUrl: window.location.href, webUrl: window.location.href } }]
-            });
-        };
-    }
 }
 
 function reset() {

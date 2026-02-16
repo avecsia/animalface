@@ -1,5 +1,6 @@
-
 import { ANIMAL_TYPES } from './animalTypes.js';
+
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 // DOM Elements
 const uploadStep = document.getElementById('uploadStep');
@@ -8,30 +9,31 @@ const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const previewImg = document.getElementById('previewImg');
 const loadingOverlay = document.getElementById('loadingOverlay');
+// analyzeAction is now the container for retestBtn, not a button itself
+const analyzeAction = document.getElementById('analyzeAction'); 
 const resultSection = document.getElementById('resultSection');
 const resetBtn = document.getElementById('resetBtn');
 const errorBox = document.getElementById('errorBox');
 const errorMessage = document.getElementById('errorMessage');
 
-const retestBtn = document.getElementById('retestBtn');
+const retestBtn = document.getElementById('retestBtn'); // retestBtn is now inside analyzeAction
 const rankingContainer = document.getElementById('rankingContainer');
 const celebrityList = document.getElementById('celebrityList');
 const keywordsContainer = document.getElementById('keywords');
-const analyzeAction = document.getElementById('analyzeAction'); // This element might not be used in the new flow, but we keep the reference
 
 // Gender Selection Elements
 const maleBtn = document.getElementById('maleBtn');
 const femaleBtn = document.getElementById('femaleBtn');
-const selectedGenderText = document.getElementById('selectedGenderText');
+const selectedGenderText = document.getElementById('selectedGenderText'); // To update the text in result section
 
 let selectedGender = "male"; // default
+let base64Image = "";
 let uploadedFile = null;
 
 function initialize() {
-    lucide.createIcons(); // Re-add the lucide icons initialization
     setupEventListeners();
     renderAnimalIcons();
-    updateGenderSelectionUI();
+    updateGenderSelectionUI(); // Set initial active state for gender buttons
 }
 
 function setupEventListeners() {
@@ -39,14 +41,17 @@ function setupEventListeners() {
         dropZone.addEventListener('click', () => fileInput.click());
     }
     if (fileInput) {
+        // Changed to onload from onloadend to be consistent with user's previous index.html logic
         fileInput.addEventListener('change', handleFileSelect);
     }
+    
     if (resetBtn) {
         resetBtn.addEventListener('click', reset);
     }
     if (retestBtn) {
-        retestBtn.addEventListener('click', reset);
+        retestBtn.addEventListener('click', reset); // retestBtn also calls reset
     }
+
     if (maleBtn) {
         maleBtn.addEventListener('click', () => {
             selectedGender = "male";
@@ -73,10 +78,12 @@ function updateGenderSelectionUI() {
     }
 }
 
+
 function renderAnimalIcons() {
     const container = document.getElementById('animalTypeIcons');
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = ''; // Clear existing icons
+    // Using ANIMAL_TYPES directly, as it's now imported and has the correct keys
     Object.values(ANIMAL_TYPES).forEach(type => {
         const div = document.createElement('div');
         div.className = "bg-white border border-slate-100 p-3 rounded-xl text-center shadow-sm";
@@ -89,96 +96,138 @@ function handleFileSelect(e) {
     uploadedFile = e.target.files[0];
     if (uploadedFile) {
         const reader = new FileReader();
-        reader.onload = (ev) => {
-            const base64Image = ev.target.result.split(',')[1];
+        reader.onload = (ev) => { // Changed from onloadend to onload
+            base64Image = ev.target.result.split(',')[1];
             previewImg.src = ev.target.result;
             
             uploadStep.classList.add('hidden');
             previewStep.classList.remove('hidden');
             resetBtn.classList.remove('hidden');
-            
-            // Call the new analyzeFace function that uses the backend
-            analyzeFace(base64Image, uploadedFile.type);
+            // Call analyzeFace immediately after file select
+            analyzeFace(base64Image); 
         };
         reader.readAsDataURL(uploadedFile);
     }
 }
 
-async function analyzeFace(base64Data, mimeType) {
+async function fetchWithRetry(url, options, retries = 5, backoff = 1000) {
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error('API Error');
+        return await response.json();
+    } catch (err) {
+        if (retries > 0) {
+            await new Promise(r => setTimeout(r, backoff));
+            return fetchWithRetry(url, options, retries - 1, backoff * 2);
+        }
+        throw err;
+    }
+}
+
+async function analyzeFace(base64Data) {
+    if (!apiKey) {
+        errorMessage.innerText = "API 키가 설정되지 않았습니다. .env 파일에 VITE_GEMINI_API_KEY를 설정해주세요.";
+        errorBox.classList.remove('hidden');
+        return;
+    }
+    
     loadingOverlay.classList.remove('hidden');
-    resultSection.classList.add('hidden');
-    errorBox.classList.add('hidden');
-    window.scrollTo(0, 0);
+    window.scrollTo(0, 0); // Scroll to top after analysis starts
+
+    const systemPrompt = `당신은 관상학 전문가이자 AI 안면 분석 전문가입니다. 
+    사용자의 사진을 분석하여 '강아지상', '고양이상', '토끼상', '공룡상', '여우상' 중 어느 것과 가장 닮았는지 퍼센트로 결과를 내주세요.
+    사용자가 선택한 성별은 '${selectedGender === 'male' ? '남성' : '여성'}'입니다. 이 성별적 특징을 고려하여 분석하세요.
+    반드시 다음 JSON 형식으로만 응답하세요:
+    {
+        "scores": { "강아지상": 80, "고양이상": 10, "토끼상": 5, "공룡상": 3, "여우상": 2 },
+        "summary": "안면의 특징에 기반한 2줄 정도의 요약 분석 내용"
+    }
+    각 점수의 합계는 100이 되어야 합니다.`;
+
+    const payload = {
+        contents: [{
+            parts: [
+                { text: "이 얼굴 사진의 동물상 비율을 분석해줘." },
+                { inlineData: { mimeType: uploadedFile.type, data: base64Data } }
+            ]
+        }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { responseMimeType: "application/json" }
+    };
 
     try {
-        // Correctly call the backend function /analyze
+        // Changed to fetch to our own /analyze endpoint
         const response = await fetch('/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base64Data, mimeType, selectedGender })
+            body: JSON.stringify({ base64Data, mimeType: uploadedFile.type, selectedGender })
         });
 
         const analysis = await response.json();
-
-        if (!response.ok) {
-            // Throw an error with the message from the backend
-            throw new Error(analysis.error || '분석 서버에서 알 수 없는 오류가 발생했습니다.');
+        if (!response.ok) { 
+            throw new Error(analysis.error || '분석 서버에서 오류가 발생했습니다.'); 
         }
-        
-        displayResult(analysis);
-
+        displayResult(analysis); // Pass the entire analysis object
     } catch (error) {
         console.error("Analysis failed:", error);
+        resultSection.classList.add('hidden');
         errorMessage.innerText = `분석 중 오류가 발생했습니다: ${error.message}`;
         errorBox.classList.remove('hidden');
-        resultSection.classList.add('hidden'); // Ensure result is hidden on error
     } finally {
         loadingOverlay.classList.add('hidden');
     }
 }
 
-function displayResult(analysis) {
-    const sortedTypes = Object.entries(analysis.scores).sort(([, a], [, b]) => b - a);
-    const topTypeKey = sortedTypes[0][0];
+function displayResult(analysis) { // Now accepts the full analysis object
+    const sortedTypes = Object.entries(analysis.scores)
+        .sort(([, a], [, b]) => b - a);
+    
+    const topTypeKey = sortedTypes[0][0]; // e.g., '강아지상'
     const topPercent = sortedTypes[0][1];
     const type = ANIMAL_TYPES[topTypeKey];
 
     if (!type) {
         console.error("Invalid animalKey from API:", topTypeKey);
-        errorMessage.innerText = "알 수 없는 동물 유형의 결과가 반환되었습니다.";
-        errorBox.classList.remove('hidden');
+        errorMessage.innerText = "알 수 없는 동물 유형입니다.";
+        errorBox.classList.add('hidden');
+        resultSection.classList.add('hidden');
         return;
     }
 
-    const imageContainer = previewStep.querySelector('.bg-white.rounded-\[2rem\]');
+    // Hide the container with the preview image and initial buttons
+    const imageContainer = previewStep.firstElementChild;
     if (imageContainer) {
         imageContainer.classList.add('hidden');
     }
     
-    if (analyzeAction) {
-       analyzeAction.classList.add('hidden');
+    // The user doesn't want the "type info" box at the bottom.
+    const typeInfoBox = document.getElementById('typeInfoBox');
+    if (typeInfoBox) {
+        typeInfoBox.classList.add('hidden');
     }
+    
+    analyzeAction.classList.add('hidden');
     errorBox.classList.add('hidden');
 
     const resultMainCard = document.getElementById('resultMainCard');
     const mainAnimalEmoji = document.getElementById('mainAnimalEmoji');
     const mainAnimalName = document.getElementById('mainAnimalName');
     const mainPercent = document.getElementById('mainPercent');
-    const resultLabel = document.getElementById('resultLabel');
-    
+    const resultLabel = document.getElementById('resultLabel'); // This now points to the p tag in index.html
+
     resultMainCard.className = `p-8 rounded-[2rem] text-center space-y-4 shadow-xl border-t-8 bg-white ${type.resultColor}`;
     mainAnimalEmoji.innerText = type.icon;
-    mainAnimalName.innerText = type.name;
-    mainPercent.innerText = `${topPercent}%`;
-    resultLabel.innerText = analysis.summary;
+    mainAnimalName.innerText = type.name; // Use type.name
+    mainPercent.innerText = `${topPercent}%`; // Use topPercent
+    resultLabel.innerText = analysis.summary; // Use summary for resultLabel
 
+    // Update animal description
     document.getElementById('animalDescription').innerText = type.description;
-    updateGenderSelectionUI(); // Update gender text in the result
 
+    // Update ranking chart
     rankingContainer.innerHTML = '';
     sortedTypes.forEach(([name, score]) => {
         const animal = ANIMAL_TYPES[name];
-        if (!animal) return;
         const row = document.createElement('div');
         row.className = "space-y-1.5";
         row.innerHTML = `
@@ -196,6 +245,7 @@ function displayResult(analysis) {
         }, 100);
     });
 
+    // Update keywords
     keywordsContainer.innerHTML = '';
     type.keywords.forEach(kw => {
         const tag = document.createElement('span');
@@ -204,6 +254,7 @@ function displayResult(analysis) {
         keywordsContainer.appendChild(tag);
     });
 
+    // Update celebrity list based on selected gender
     celebrityList.innerHTML = '';
     const celebsToShow = selectedGender === 'male' ? type.maleCelebs : type.femaleCelebs;
     if (celebsToShow && celebsToShow.length > 0) {
@@ -215,11 +266,17 @@ function displayResult(analysis) {
         });
     }
 
+
+    // Show the results
     resultSection.classList.remove('hidden');
+    
+    // Removed Kakao Share Button Click Handler
 }
 
 function reset() {
+    base64Image = "";
     uploadedFile = null;
+    previewImg.src = "";
     fileInput.value = ""; 
     
     uploadStep.classList.remove('hidden');
@@ -227,18 +284,16 @@ function reset() {
     resetBtn.classList.add('hidden');
     resultSection.classList.add('hidden');
     
-    const imageContainer = previewStep.querySelector('.bg-white.rounded-\[2rem\]');
+    // Show the preview image container again for the next upload
+    const imageContainer = previewStep.firstElementChild;
     if (imageContainer) {
         imageContainer.classList.remove('hidden');
     }
 
-    if(analyzeAction) {
-      analyzeAction.classList.remove('hidden');
-    }
+    analyzeAction.classList.remove('hidden');
     errorBox.classList.add('hidden');
 }
 
-// Initialize the application
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
 } else {

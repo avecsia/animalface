@@ -33,6 +33,7 @@ let uploadedFile = null;
 function initialize() {
     setupEventListeners();
     renderAnimalIcons();
+    lucide.createIcons(); // Re-added this line
     updateGenderSelectionUI(); // Set initial active state for gender buttons
 }
 

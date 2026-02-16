@@ -1,12 +1,48 @@
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 const ANIMAL_TYPES = {
-    PUPPY: { name: '강아지상', description: '선한 눈매, 큰 눈동자, 동그란 콧망울, 동글동글한 얼굴형이 특징이며 순하고 친근한 인상을 줍니다.', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: '🐶' },
-    CAT: { name: '고양이상', description: '위로 올라간 눈꼬리, 날렵한 턱선, 뾰족한 눈 앞머리가 특징으로 도도하고 세련된 매력을 줍니다.', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: '🐱' },
-    FOX: { name: '사막여우상', description: '갸름한 얼굴형, 긴 콧대, 가로로 긴 눈매로 도도하면서도 매혹적인 분위기를 자아냅니다.', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: '🦊' },
-    RABBIT: { name: '토끼상', description: '작고 동그란 코, 톡 튀어나온 앞니, 순하고 귀여운 이미지가 특징입니다.', color: 'bg-pink-100 text-pink-700 border-pink-200', icon: '🐰' },
-    BEAR: { name: '곰상', description: '듬직하고 선한 인상, 둥글둥글한 이목구비로 편안함을 줍니다.', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: '🐻' },
-    DINO: { name: '공룡/늑대상', description: '뚜렷한 이목구비, 강한 인상, 짙은 눈썹이 특징이며 카리스마 넘치는 매력을 줍니다.', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: '🦖' }
+    PUPPY: {
+        name: '강아지상',
+        description: '순하고 선량한 인상. 크고 동그란 눈매, 처진 눈꼬리, 부드러운 얼굴 윤곽이 특징입니다. 친근하고 귀여운 매력을 발산하며, 보호본능을 자극합니다. 밝고 긍정적인 이미지를 줍니다.',
+        celebrities: ['박보영', '강아지상 유명인 2', '강아지상 유명인 3'],
+        color: 'bg-orange-100 text-orange-700 border-orange-200',
+        icon: '🐶'
+    },
+    CAT: {
+        name: '고양이상',
+        description: '도도하고 시크한 매력. 위로 살짝 올라간 눈꼬리, 날카로운 눈매, 갸름한 턱선이 특징입니다. 세련되고 도회적인 이미지를 주며, 자신감 있고 독립적인 분위기를 풍깁니다.',
+        celebrities: ['제니 (블랙핑크)', '고양이상 유명인 2', '고양이상 유명인 3'],
+        color: 'bg-purple-100 text-purple-700 border-purple-200',
+        icon: '🐱'
+    },
+    FOX: {
+        name: '사막여우상',
+        description: '신비롭고 매혹적인 분위기. 갸름하고 작은 얼굴형, 긴 코, 가로로 긴 눈매와 살짝 올라간 눈꼬리가 특징입니다. 섹시하면서도 고급스러운 이미지를 동시에 가집니다.',
+        celebrities: ['슬기 (레드벨벳)', '사막여우상 유명인 2', '사막여우상 유명인 3'],
+        color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+        icon: '🦊'
+    },
+    RABBIT: {
+        name: '토끼상',
+        description: '귀엽고 사랑스러운 동안 외모. 둥근 얼굴형, 크고 동그란 눈, 살짝 튀어나온 앞니가 특징입니다. 발랄하고 생기 넘치는 이미지를 주며, 순수하고 깨끗한 느낌을 줍니다.',
+        celebrities: ['나연 (트와이스)', '토끼상 유명인 2', '토끼상 유명인 3'],
+        color: 'bg-pink-100 text-pink-700 border-pink-200',
+        icon: '🐰'
+    },
+    BEAR: {
+        name: '곰상',
+        description: '푸근하고 듬직한 인상. 전체적으로 둥글둥글한 이목구비와 얼굴형, 넓은 미간이 특징입니다. 편안하고 신뢰감을 주는 이미지를 가지며, 순박하고 우직한 매력이 있습니다.',
+        celebrities: ['마동석', '곰상 유명인 2', '곰상 유명인 3'],
+        color: 'bg-amber-100 text-amber-700 border-amber-200',
+        icon: '🐻'
+    },
+    DINO: {
+        name: '공룡/늑대상',
+        description: '강렬하고 카리스마 있는 존재감. 뚜렷한 이목구비, 깊은 눈매, 날렵한 턱선이 특징입니다. 시크하고 도시적인 분위기를 풍기며, 강인하고 시원시원한 인상을 줍니다.',
+        celebrities: ['BTS 제이홉', '공룡/늑대상 유명인 2', '공룡/늑대상 유명인 3'],
+        color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        icon: '🦖'
+    }
 };
 
 // DOM Elements
@@ -205,6 +241,9 @@ function displayResult(data) {
     const resultCard = document.getElementById('resultCard');
     const resultBgIcon = document.getElementById('resultBgIcon');
     const progressBar = document.getElementById('progressBar');
+    const animalDescription = document.getElementById('animalDescription');
+    const celebrityList = document.getElementById('celebrityList');
+    const keywordsContainer = document.getElementById('keywords'); // Keywords element
 
     resultCard.className = `p-8 rounded-3xl border-2 shadow-lg relative overflow-hidden ${type.color}`;
     resultBgIcon.querySelector('span').innerText = type.icon;
@@ -212,6 +251,29 @@ function displayResult(data) {
     document.getElementById('resultTitle').innerHTML = `${data.matchPercentage}% <span class="text-2xl font-bold">${type.name}</span>`;
     document.getElementById('resultReason').innerText = `"${data.reason}"`;
     document.getElementById('positiveFeedback').innerText = data.positiveFeedback;
+
+    // Update animal description
+    animalDescription.innerText = type.description;
+
+    // Update celebrity list
+    celebrityList.innerHTML = ''; // Clear existing celebrities
+    type.celebrities.forEach(name => {
+        const item = document.createElement('div');
+        item.className = "bg-slate-50 p-3 rounded-xl text-center font-bold text-slate-700 border border-slate-100";
+        item.innerText = name;
+        celebrityList.appendChild(item);
+    });
+
+    // Handle keywords (if type.keywords exists in ANIMAL_TYPES, otherwise clear)
+    keywordsContainer.innerHTML = ''; // Clear existing keywords
+    if (type.keywords && type.keywords.length > 0) {
+        type.keywords.forEach(kw => {
+            const tag = document.createElement('span');
+            tag.className = "px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold";
+            tag.innerText = kw;
+            keywordsContainer.appendChild(tag);
+        });
+    }
 
     // Show the results
     resultSection.classList.remove('hidden');

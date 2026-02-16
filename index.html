@@ -98,6 +98,144 @@
         <p class="mt-1">Google Gemini 1.5 Flash 모델이 성별 데이터를 바탕으로 분석한 결과입니다.</p>
     </footer>
 
-    <script type="module" src="/src/main.js"></script>
+    <script>
+        let selectedGender = "male";
+        const animalData = {
+            "강아지상": { emoji: "🐶", color: "border-blue-500", description: "관상학적으로 눈꼬리가 살짝 내려가고 눈망울이 맑은 '견상'은 대인관계가 원만하며 타인에게 신뢰를 주는 상입니다. 부드러운 턱선과 입술 모양은 온화한 성품을 나타내며, 누구에게나 사랑받는 '첫사랑 조작' 매력을 지니고 있습니다.", keywords: ["#신뢰감", "#온화함", "#대인관계굿", "#순둥순둥"], maleCelebs: ["박보검", "송중기", "강다니엘", "백현", "정해인"], femaleCelebs: ["수지", "아이유", "한지민", "박보영", "윤아"] },
+            "고양이상": { emoji: "🐱", color: "border-purple-600", description: "눈꼬리가 위로 향하고 눈매가 또렷한 '묘상'은 주관이 뚜렷하고 예술적 감각이 뛰어난 상입니다. 날렵한 턱선과 콧날은 도도하면서도 시크한 분위기를 자아내며, 쉽게 다가갈 수 없는 아우라 뒤에 숨겨진 치명적인 매력이 특징입니다.", keywords: ["#예술가적", "#도도함", "#시크미", "#치명적"], maleCelebs: ["지드래곤", "주지훈", "강동원", "이준기", "황민현"], femaleCelebs: ["제니", "안소희", "노제", "한소희", "카리나"] },
+            "토끼상": { emoji: "🐰", color: "border-pink-500", description: "동그란 눈과 도드라진 앞니, 밝은 피부톤을 가진 '토끼상'은 명랑하고 사교적인 성격을 가진 상입니다. 보는 사람의 기분을 좋게 만드는 에너지를 가지고 있으며, 보호본능을 자극하는 사랑스러운 과즙미가 가장 큰 매력 포인트입니다.", keywords: ["#상큼발랄", "#보호본능", "#러블리", "#사교왕"], maleCelebs: ["정국", "수호", "도영(NCT)", "박지훈"], femaleCelebs: ["나연", "장원영", "윈터", "조유리", "사나"] },
+            "공룡상": { emoji: "🦖", color: "border-emerald-600", description: "T존이 뚜렷하고 하관이 발달한 '공룡상'은 추진력이 강하고 리더십이 뛰어난 상입니다. 개성 있는 이목구비와 강렬한 눈빛은 마초적인 매력과 함께 남성적인 카리스마를 풍기며, 알수록 다정한 츤데레적 면모를 보입니다.", keywords: ["#리더십", "#카리스마", "#개성파", "#츤데레"], maleCelebs: ["공유", "김우빈", "홍종현", "탑", "류준열"], femaleCelebs: ["김다미", "김고은", "정호연", "슬기(레드벨벳)"] },
+            "여우상": { emoji: "🦊", color: "border-orange-500", description: "가로로 긴 눈매와 날렵한 콧등을 가진 '여우상'은 지혜롭고 눈치가 빠른 영리한 상입니다. 묘한 섹시함과 지적인 분위기가 공존하며, 사람을 끄는 매혹적인 힘이 있어 사회적으로도 성공할 확률이 높은 관상입니다.", keywords: ["#영리함", "#지적섹시", "#매혹적", "#눈치백단"], maleCelebs: ["서인국", "육성재", "이도현", "김도영", "연준"], femaleCelebs: ["현아", "예지(ITZY)", "청하", "경리", "전소연"] }
+        };
+
+        // --- 모든 초기화 로직을 DOMContentLoaded 이벤트 리스너 안으로 이동 ---
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        async function initializeApp() {
+            // 1. 아이콘을 먼저 생성합니다.
+            lucide.createIcons();
+
+            // 2. 필요한 모든 HTML 요소를 가져옵니다.
+            const fileInput = document.getElementById('fileInput'), dropZone = document.getElementById('dropZone'), uploadStep = document.getElementById('uploadStep'), previewStep = document.getElementById('previewStep'), previewImg = document.getElementById('previewImg'), loadingOverlay = document.getElementById('loadingOverlay'), resultSection = document.getElementById('resultSection'), errorSection = document.getElementById('errorSection'), errorMessage = document.getElementById('errorMessage'), actionsSection = document.getElementById('actionsSection'), rankingContainer = document.getElementById('rankingContainer'), celebrityList = document.getElementById('celebrityList'), keywordsContainer = document.getElementById('keywords'), resetBtn = document.getElementById('resetBtn'), retestBtn = document.getElementById('retestBtn'), kakaoShareBtn = document.getElementById('kakaoShareBtn'), maleBtn = document.getElementById('maleBtn'), femaleBtn = document.getElementById('femaleBtn');
+
+            // 3. 모든 이벤트 리스너를 할당합니다.
+            maleBtn.onclick = () => { selectedGender = "male"; maleBtn.classList.add('active'); femaleBtn.classList.remove('active'); };
+            femaleBtn.onclick = () => { selectedGender = "female"; femaleBtn.classList.add('active'); maleBtn.classList.remove('active'); };
+            dropZone.onclick = () => fileInput.click();
+            resetBtn.onclick = () => location.reload();
+            retestBtn.onclick = () => location.reload();
+
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        previewImg.src = ev.target.result;
+                        uploadStep.classList.add('hidden');
+                        previewStep.classList.remove('hidden');
+                        resetBtn.classList.remove('hidden');
+                        analyzeImage(ev.target.result.split(',')[1], file.type);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            // 4. 카카오 SDK를 초기화합니다.
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                if (response.ok && config.kakaoKey) {
+                    Kakao.init(config.kakaoKey);
+                } else {
+                    console.error("Failed to initialize Kakao SDK:", config.error || "Key not found");
+                }
+            } catch (error) {
+                console.error("Error fetching app configuration:", error);
+            }
+        }
+
+        async function analyzeImage(base64Data, mimeType) {
+            // ... (분석 로직은 변경 없음)
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const resultSection = document.getElementById('resultSection');
+            const errorSection = document.getElementById('errorSection');
+            const actionsSection = document.getElementById('actionsSection');
+
+            loadingOverlay.classList.remove('hidden');
+            resultSection.classList.add('hidden');
+            errorSection.classList.add('hidden');
+            actionsSection.style.display = 'none';
+            window.scrollTo(0, 0);
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base64Data, mimeType, selectedGender })
+                });
+                const analysis = await response.json();
+                if (!response.ok) { throw new Error(analysis.error || '분석 서버에서 오류가 발생했습니다.'); }
+                renderResults(analysis);
+            } catch (error) {
+                console.error(error);
+                displayError(`분석 중 오류가 발생했습니다: ${error.message}`);
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        function displayError(message) {
+            document.getElementById('errorMessage').innerText = message;
+            document.getElementById('errorSection').classList.remove('hidden');
+            document.getElementById('actionsSection').style.display = 'grid';
+            document.getElementById('kakaoShareBtn').style.display = 'none';
+        }
+
+        function renderResults(analysis) {
+            const sortedTypes = Object.entries(analysis.scores).sort(([, a], [, b]) => b - a);
+            const topType = sortedTypes[0][0], topPercent = sortedTypes[0][1], data = animalData[topType];
+            
+            const resultMainCard = document.getElementById('resultMainCard');
+            resultMainCard.className = `p-8 rounded-[2rem] text-center space-y-4 shadow-xl border-t-8 bg-white ${data.color}`;
+            document.getElementById('mainAnimalEmoji').innerText = data.emoji;
+            document.getElementById('mainAnimalName').innerText = topType;
+            document.getElementById('mainPercent').innerText = `${topPercent}%`;
+            document.getElementById('apiSummary').innerText = analysis.summary;
+            document.getElementById('animalDescription').innerText = data.description;
+            document.getElementById('selectedGenderText').innerText = selectedGender === 'male' ? '남성' : '여성';
+
+            const rankingContainer = document.getElementById('rankingContainer');
+            rankingContainer.innerHTML = '';
+            sortedTypes.forEach(([name, score]) => {
+                const row = document.createElement('div');
+                row.className = "space-y-1.5";
+                row.innerHTML = `<div class="flex justify-between text-sm font-bold"><span>${animalData[name].emoji} ${name}</span><span class="text-blue-600">${score}%</span></div><div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div class="h-full bg-blue-500 rounded-full transition-all duration-1000" style="width: 0%"></div></div>`;
+                rankingContainer.appendChild(row);
+                setTimeout(() => { row.querySelector('.bg-blue-500').style.width = `${score}%`; }, 100);
+            });
+
+            const keywordsContainer = document.getElementById('keywords');
+            keywordsContainer.innerHTML = '';
+            data.keywords.forEach(kw => { const tag = document.createElement('span'); tag.className = "px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold"; tag.innerText = kw; keywordsContainer.appendChild(tag); });
+
+            const celebrityList = document.getElementById('celebrityList');
+            celebrityList.innerHTML = '';
+            const celebs = selectedGender === 'male' ? data.maleCelebs : data.femaleCelebs;
+            celebs.forEach(name => { const item = document.createElement('div'); item.className = "bg-slate-50 p-3 rounded-xl text-center font-bold text-slate-700 border border-slate-100 shadow-sm"; item.innerText = name; celebrityList.appendChild(item); });
+
+            document.getElementById('resultSection').classList.remove('hidden');
+            document.getElementById('actionsSection').style.display = 'grid';
+            document.getElementById('kakaoShareBtn').style.display = 'flex';
+            
+            document.getElementById('kakaoShareBtn').onclick = () => {
+                if (!Kakao.isInitialized()) { alert("카카오 SDK가 초기화되지 않았습니다. Cloudflare 비밀값을 확인하거나 잠시 후 다시 시도해주세요."); return; }
+                Kakao.Share.sendDefault({
+                    objectType: 'feed',
+                    content: { title: `AI 동물상 테스트 결과: ${topPercent}% ${topType}!`, description: `나는 어떤 동물상일까? AI가 분석해준 내 관상과 닮은 연예인을 확인해보세요!`, imageUrl: document.getElementById('previewImg').src, link: { mobileWebUrl: window.location.href, webUrl: window.location.href } },
+                    buttons: [{ title: '나도 테스트하기', link: { mobileWebUrl: window.location.href, webUrl: window.location.href } }]
+                });
+            };
+        }
+    </script>
 </body>
 </html>

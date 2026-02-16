@@ -7,7 +7,6 @@ export async function onRequest(context) {
 
     try {
         // Cloudflare 환경 변수(비밀)에서 API 키를 가져옵니다.
-        // Cloudflare Pages 설정에서 비밀 변수의 이름이 'GEMINI_API_KEY'인지 확인해주세요.
         const geminiApiKey = context.env.VITE_GEMINI_API_KEY;
         if (!geminiApiKey) {
             return new Response(JSON.stringify({ error: "VITE_GEMINI_API_KEY 비밀이 Cloudflare 환경에 설정되지 않았습니다." }), {
@@ -30,8 +29,8 @@ export async function onRequest(context) {
         }
         각 점수의 합계는 100이 되어야 합니다.`;
         
-        // 안정적인 최신 모델 'gemini-1.5-flash-latest'를 사용합니다.
-        const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+        // 안정적인 최신 모델 'gemini-2.5-flash-preview-09-2025'를 사용합니다.
+        const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
         
         const payload = {
             contents: [{

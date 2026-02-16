@@ -1,49 +1,6 @@
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-const ANIMAL_TYPES = {
-    PUPPY: {
-        name: '강아지상',
-        description: '순하고 선량한 인상. 크고 동그란 눈매, 처진 눈꼬리, 부드러운 얼굴 윤곽이 특징입니다. 친근하고 귀여운 매력을 발산하며, 보호본능을 자극합니다. 밝고 긍정적인 이미지를 줍니다.',
-        celebrities: ['박보영', '강아지상 유명인 2', '강아지상 유명인 3'],
-        color: 'bg-orange-100 text-orange-700 border-orange-200',
-        icon: '🐶'
-    },
-    CAT: {
-        name: '고양이상',
-        description: '도도하고 시크한 매력. 위로 살짝 올라간 눈꼬리, 날카로운 눈매, 갸름한 턱선이 특징입니다. 세련되고 도회적인 이미지를 주며, 자신감 있고 독립적인 분위기를 풍깁니다.',
-        celebrities: ['제니 (블랙핑크)', '고양이상 유명인 2', '고양이상 유명인 3'],
-        color: 'bg-purple-100 text-purple-700 border-purple-200',
-        icon: '🐱'
-    },
-    FOX: {
-        name: '사막여우상',
-        description: '신비롭고 매혹적인 분위기. 갸름하고 작은 얼굴형, 긴 코, 가로로 긴 눈매와 살짝 올라간 눈꼬리가 특징입니다. 섹시하면서도 고급스러운 이미지를 동시에 가집니다.',
-        celebrities: ['슬기 (레드벨벳)', '사막여우상 유명인 2', '사막여우상 유명인 3'],
-        color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-        icon: '🦊'
-    },
-    RABBIT: {
-        name: '토끼상',
-        description: '귀엽고 사랑스러운 동안 외모. 둥근 얼굴형, 크고 동그란 눈, 살짝 튀어나온 앞니가 특징입니다. 발랄하고 생기 넘치는 이미지를 주며, 순수하고 깨끗한 느낌을 줍니다.',
-        celebrities: ['나연 (트와이스)', '토끼상 유명인 2', '토끼상 유명인 3'],
-        color: 'bg-pink-100 text-pink-700 border-pink-200',
-        icon: '🐰'
-    },
-    BEAR: {
-        name: '곰상',
-        description: '푸근하고 듬직한 인상. 전체적으로 둥글둥글한 이목구비와 얼굴형, 넓은 미간이 특징입니다. 편안하고 신뢰감을 주는 이미지를 가지며, 순박하고 우직한 매력이 있습니다.',
-        celebrities: ['마동석', '곰상 유명인 2', '곰상 유명인 3'],
-        color: 'bg-amber-100 text-amber-700 border-amber-200',
-        icon: '🐻'
-    },
-    DINO: {
-        name: '공룡/늑대상',
-        description: '강렬하고 카리스마 있는 존재감. 뚜렷한 이목구비, 깊은 눈매, 날렵한 턱선이 특징입니다. 시크하고 도시적인 분위기를 풍기며, 강인하고 시원시원한 인상을 줍니다.',
-        celebrities: ['BTS 제이홉', '공룡/늑대상 유명인 2', '공룡/늑대상 유명인 3'],
-        color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        icon: '🦖'
-    }
-};
+import { ANIMAL_TYPES } from './animalTypes.js';
 
 // DOM Elements
 const uploadStep = document.getElementById('uploadStep');
@@ -53,7 +10,7 @@ const fileInput = document.getElementById('fileInput');
 const previewImg = document.getElementById('previewImg');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const analyzeAction = document.getElementById('analyzeAction');
-const startAnalyzeBtn = document.getElementById('startAnalyzeBtn');
+
 const resultSection = document.getElementById('resultSection');
 const resetBtn = document.getElementById('resetBtn');
 const errorBox = document.getElementById('errorBox');
@@ -76,9 +33,6 @@ function setupEventListeners() {
     }
     if (fileInput) {
         fileInput.addEventListener('change', handleFileSelect);
-    }
-    if (startAnalyzeBtn) {
-        startAnalyzeBtn.addEventListener('click', analyzeFace);
     }
     
     if (resetBtn) {
@@ -186,27 +140,15 @@ async function analyzeFace() {
     }
 }
 
-async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+async function fetchWithRetry(url, options, retries = 5, backoff = 1000) {
     try {
         const response = await fetch(url, options);
-        if (!response.ok) {
-            if (response.status === 429) {
-                const rateLimitError = new Error("Rate limit exceeded.");
-                rateLimitError.isRateLimit = true;
-                throw rateLimitError;
-            }
-            const errorBody = await response.text();
-            console.error(`API Error: ${response.status} ${response.statusText}`, errorBody);
-            throw new Error(`API call failed: ${response.status}`);
-        }
+        if (!response.ok) throw new Error('API Error');
         return await response.json();
     } catch (err) {
-        if (err.isRateLimit) {
-            throw err;
-        }
         if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return fetchWithRetry(url, options, retries - 1, delay * 2);
+            await new Promise(r => setTimeout(r, backoff));
+            return fetchWithRetry(url, options, retries - 1, backoff * 2);
         }
         throw err;
     }

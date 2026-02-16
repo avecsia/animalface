@@ -29,7 +29,6 @@ let uploadedFile = null;
 function initialize() {
     setupEventListeners();
     renderAnimalIcons();
-    lucide.createIcons();
     updateGenderSelectionUI(); // Set initial active state for gender buttons
     initializeKakaoSDK(); // Initialize Kakao SDK
 }

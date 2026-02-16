@@ -1,4 +1,3 @@
-
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 const ANIMAL_TYPES = {
@@ -23,7 +22,7 @@ const resultSection = document.getElementById('resultSection');
 const resetBtn = document.getElementById('resetBtn');
 const errorBox = document.getElementById('errorBox');
 const errorMessage = document.getElementById('errorMessage');
-const retryBtn = document.getElementById('retryBtn');
+
 const retestBtn = document.getElementById('retestBtn');
 
 let base64Image = "";
@@ -44,9 +43,7 @@ function setupEventListeners() {
     if (startAnalyzeBtn) {
         startAnalyzeBtn.addEventListener('click', analyzeFace);
     }
-    if (retryBtn) {
-        retryBtn.addEventListener('click', analyzeFace);
-    }
+    
     if (resetBtn) {
         resetBtn.addEventListener('click', reset);
     }
@@ -84,12 +81,15 @@ function handleFileSelect(e) {
 }
 
 async function analyzeFace() {
+    if (!apiKey) {
+        errorMessage.innerText = "API 키가 설정되지 않았습니다. .env 파일에 VITE_GEMINI_API_KEY를 설정해주세요.";
+        errorBox.classList.remove('hidden');
+        return;
+    }
     if (!base64Image || !uploadedFile) return;
 
     startAnalyzeBtn.disabled = true;
-    retryBtn.disabled = true;
     startAnalyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    retryBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
     loadingOverlay.classList.remove('hidden');
     analyzeAction.classList.add('hidden');
@@ -144,9 +144,7 @@ async function analyzeFace() {
         errorBox.classList.remove('hidden');
     } finally {
         startAnalyzeBtn.disabled = false;
-        retryBtn.disabled = false;
         startAnalyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        retryBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         loadingOverlay.classList.add('hidden');
     }
 }

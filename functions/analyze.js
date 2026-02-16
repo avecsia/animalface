@@ -29,8 +29,8 @@ export async function onRequest(context) {
         }
         각 점수의 합계는 100이 되어야 합니다.`;
         
-        // 안정적인 최신 모델 'gemini-2.5-flash-preview-09-2025'를 사용합니다.
-        const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+        // 사용자님께서 말씀해주신 정확한 모델명 'gemini-2.5-flash'를 사용하도록 수정합니다.
+        const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
         
         const payload = {
             contents: [{
@@ -43,33 +43,36 @@ export async function onRequest(context) {
             generationConfig: { responseMimeType: "application/json" }
         };
 
-        const googleResponse = await fetch(googleApiUrl, {
+        // Gemini API 호출
+        const apiResponse = await fetch(googleApiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
-        if (!googleResponse.ok) {
-             const errorBody = await googleResponse.json();
-             console.error('Google API Error:', errorBody);
-             return new Response(JSON.stringify({ error: `Google API 오류: ${errorBody.error?.message}` }), {
-                status: googleResponse.status,
+        if (!apiResponse.ok) {
+            const errorBody = await apiResponse.text();
+            console.error("Gemini API Error:", errorBody);
+            return new Response(JSON.stringify({ error: `Gemini API로부터 오류 응답을 받았습니다. (상태: ${apiResponse.status})` }), {
+                status: 500,
                 headers: { 'Content-Type': 'application/json' },
             });
         }
 
-        const result = await googleResponse.json();
-        const analysis = JSON.parse(result.candidates[0].content.parts[0].text);
+        const responseData = await apiResponse.json();
         
-        // 분석 결과를 브라우저에 JSON 형식으로 전달합니다.
-        return new Response(JSON.stringify(analysis), {
-            status: 200,
+        // API 응답 구조를 확인하고, 실제 분석 결과를 추출합니다.
+        const analysisText = responseData.candidates[0].content.parts[0].text;
+        const analysisJson = JSON.parse(analysisText);
+
+        // 브라우저에 최종 결과를 반환합니다.
+        return new Response(JSON.stringify(analysisJson), {
             headers: { 'Content-Type': 'application/json' },
         });
 
-    } catch (error) {
-        console.error('서버 내부 오류:', error);
-        return new Response(JSON.stringify({ error: error.message }), {
+    } catch (e) {
+        console.error("Error in /analyze function:", e);
+        return new Response(JSON.stringify({ error: '서버 기능 처리 중 예외가 발생했습니다.' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });

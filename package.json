@@ -5,9 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "lint": "eslint ."
   },
   "dependencies": {
     "vite": "^5.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.2.0",
+    "globals": "^15.4.0"
   }
 }

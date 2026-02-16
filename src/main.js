@@ -32,11 +32,6 @@ let uploadedFile = null;
 function initialize() {
     setupEventListeners();
     renderAnimalIcons();
-    try {
-        lucide.createIcons();
-    } catch (e) {
-        console.error("Lucide icon initialization failed:", e);
-    }
 }
 
 function setupEventListeners() {
@@ -83,12 +78,6 @@ function handleFileSelect(e) {
             uploadStep.classList.add('hidden');
             previewStep.classList.remove('hidden');
             resetBtn.classList.remove('hidden');
-
-            try {
-                lucide.createIcons();
-            } catch (err) {
-                console.error("Lucide icon refresh failed:", err);
-            }
         };
         reader.readAsDataURL(uploadedFile);
     }
@@ -223,12 +212,6 @@ function displayResult(data) {
 
     // Show the results
     resultSection.classList.remove('hidden');
-
-    try {
-        lucide.createIcons();
-    } catch (e) {
-        console.error("Lucide icon refresh failed:", e);
-    }
 
     setTimeout(() => {
         progressBar.style.width = `${data.matchPercentage}%`;
